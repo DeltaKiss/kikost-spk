@@ -1,0 +1,30 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Node dependencies & build outputs
+node_modules/
+dist/
+dist-ssr/
+
+# Vite internal cache & hot-reload marker
+.vite/
+hot
+
+# Environment variables
+# Abaikan file .env rahasia secara default; izinkan hanya .env.demo (flag publik)
+.env
+.env.*
+!.env.demo
+
+# OS / Editor temporary files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.sw?
