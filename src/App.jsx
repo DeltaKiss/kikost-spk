@@ -845,14 +845,14 @@ function VendorsPage({ route, navigate, notify }) {
   const [error, setError] = useState(null);
   const [confirmState, setConfirmState] = useState(null);
 
-  useEffect(() => { let alive = true; setRows(null); if (isDetail && id) get('vendors', { id }).then((d) => alive && setDetail(d)).catch((e) => alive && setError(e)); else get('vendors').then((d) => alive && setRows(d)).catch((e) => alive && setError(e)); return () => { alive = false; }; }, [isDetail, id]);
+  useEffect(() => { let alive = true; setRows(null); if (isDetail && id) get('vendors', { id }).then((d) => alive && setDetail(d)).catch((e) => alive && setError(e)); else get('vendors').then((d) => alive && setRows(Array.isArray(d) ? d : (d?.vendors || []))).catch((e) => alive && setError(e)); return () => { alive = false; }; }, [isDetail, id]);
   if (error) return <><PageHeading title="Data Vendor" /><ErrorMessage error={error} /></>;
   if (isDetail) {
     if (!detail) return <Loading />;
     return <><PageHeading title={detail.vendor.nama_vendor} subtitle="Profil vendor dan riwayat evaluasi." action={<div className="detail-actions-group"><LinkButton to="/vendors/index.php">← Kembali</LinkButton><LinkButton to={`/vendors/edit.php?id=${detail.vendor.id}`} variant="btn-primary">Edit vendor</LinkButton></div>} />
       <div className="metric-grid three"><Metric icon="▣" label="Status vendor" value={detail.vendor.status === 'aktif' ? 'Aktif' : 'Nonaktif'} hint="Status operasional saat ini" tone="green" /><Metric icon="☎" label="Telepon" value={detail.vendor.no_telepon || '—'} hint="Kontak vendor" tone="blue" /><Metric icon="⌖" label="Bergabung" value={String(detail.vendor.created_at || '—').slice(0, 10)} hint="Tanggal tercatat" tone="purple" /></div>
       <Card title="Alamat dan kontak"><p className="detail-text">{detail.vendor.alamat || 'Alamat belum dicatat.'}</p></Card>
-      <Card title="Riwayat penilaian"><Table headers={['Periode', 'Kode', 'Kriteria', 'Jenis', 'Nilai']} empty="Belum ada riwayat penilaian.">{detail.history.map((row, i) => <tr key={`${row.periode}-${row.kode}-${i}`}><td>{formatPeriod(row.periode)}</td><td><b>{row.kode}</b></td><td>{row.nama_kriteria}</td><td>{row.jenis}</td><td>{row.nilai}</td></tr>)}</Table></Card>
+      <Card title="Riwayat penilaian"><Table headers={['Periode', 'Kode', 'Kriteria', 'Jenis', 'Nilai']} empty="Belum ada riwayat penilaian.">{(detail.history || []).map((row, i) => <tr key={`${row.periode}-${row.kode}-${i}`}><td>{formatPeriod(row.periode)}</td><td><b>{row.kode}</b></td><td>{row.nama_kriteria}</td><td>{row.jenis}</td><td>{row.nilai}</td></tr>)}</Table></Card>
     </>;
   }
   if (!rows) return <Loading />;
@@ -1168,12 +1168,13 @@ function AssessmentsPage({ route, navigate, notify }) {
     });
   }
 
-  const scoredIds = new Set(data.rows.map((r) => Number(r.vendor.id)));
-  const incompleteCount = data.rows.filter((r) => r.filled < r.total).length;
+  const rowsList = Array.isArray(data?.rows) ? data.rows : [];
+  const scoredIds = new Set(rowsList.map((r) => Number(r.vendor?.id || r.vendor_id)));
+  const incompleteCount = rowsList.filter((r) => (r.filled || 0) < (r.total || 0)).length;
 
-  let filteredRows = data.rows;
+  let filteredRows = rowsList;
   if (filterIncompleteOnly) {
-    filteredRows = filteredRows.filter((r) => r.filled < r.total);
+    filteredRows = filteredRows.filter((r) => (r.filled || 0) < (r.total || 0));
   }
   if (searchQuery.trim()) {
     const q = searchQuery.toLowerCase();

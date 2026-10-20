@@ -334,7 +334,16 @@ export async function handleMockRequest(resource, action = '', options = {}) {
       if (params.id) {
         const vendor = store.vendors.find((v) => Number(v.id) === Number(params.id));
         if (!vendor) throw new Error('Vendor tidak ditemukan.');
-        return { vendor };
+        const vAss = store.assessments[vendor.id] || {};
+        const history = store.criteria.map((c) => ({
+          periode: store.period,
+          kode: c.kode,
+          nama_kriteria: c.nama_kriteria,
+          bobot: c.bobot,
+          jenis: c.jenis,
+          nilai: vAss[c.id] !== undefined ? vAss[c.id] : '-',
+        }));
+        return { vendor, history };
       }
       return { vendors: [...store.vendors] };
     }
@@ -423,9 +432,30 @@ export async function handleMockRequest(resource, action = '', options = {}) {
   }
 
   // 6. Assessments Endpoint
-  if (resource === 'penilaian') {
+  if (resource === 'assessments' || resource === 'penilaian') {
     if (method === 'GET') {
       const curPeriod = params.periode || store.period;
+      const activeVendors = store.vendors.filter((v) => v.status === 'aktif');
+      const rows = activeVendors.map((vendor) => {
+        const ratings = {};
+        let filled = 0;
+        store.criteria.forEach((c) => {
+          const val = store.assessments[vendor.id]?.[c.id];
+          if (val !== undefined && val !== null && val !== '') {
+            ratings[c.id] = Number(val);
+            filled++;
+          } else {
+            ratings[c.id] = null;
+          }
+        });
+        return {
+          vendor,
+          ratings,
+          filled,
+          total: store.criteria.length,
+        };
+      });
+
       if (params.vendor_id) {
         const vendor = store.vendors.find((v) => Number(v.id) === Number(params.vendor_id));
         const nilai = store.assessments[params.vendor_id] || {};
@@ -434,6 +464,7 @@ export async function handleMockRequest(resource, action = '', options = {}) {
           periode: curPeriod,
           criteria: store.criteria,
           nilai: nilai,
+          rows: rows,
         };
       }
       return {
@@ -441,11 +472,18 @@ export async function handleMockRequest(resource, action = '', options = {}) {
         periods: store.periods,
         criteria: store.criteria,
         vendors: store.vendors,
-        matrix: store.assessments,
-        is_complete: true,
+        rows: rows,
       };
     }
     if (method === 'POST') {
+      const act = action || data.action || 'create';
+      if (act === 'delete') {
+        const vId = Number(data.vendor_id);
+        if (vId && store.assessments[vId]) {
+          delete store.assessments[vId];
+        }
+        return { vendor_id: data.vendor_id, periode: data.periode };
+      }
       const vId = Number(data.vendor_id);
       if (vId && data.nilai) {
         store.assessments[vId] = {
